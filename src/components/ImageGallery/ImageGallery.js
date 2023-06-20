@@ -1,60 +1,69 @@
 import { Component } from 'react';
+import { toast } from 'react-toastify';
+import Loader from 'components/Loader/Loader';
+import ImageGalleryItem from '../ImageGalleryItem/ImageGalleryItem';
+import Button from 'components/Button/Button';
+
 import './ImageGallery.module.css';
 
 export default class ImageGallery extends Component {
   state = {
-    searchResault: null,
+    searchResult: null,
     error: null,
-    status: 'idel',
+    status: 'idle',
   };
 
   componentDidUpdate(prevProps, prevState) {
-    const prevSearch = prevProps.imageGallery;
-    const newSearch = this.props.imageGallery;
+    const prevSearch = prevProps.searchValue;
+    const newSearch = this.props.searchValue;
     if (prevSearch !== newSearch) {
       this.setState({ status: 'pending' });
       setTimeout(() => {
-        fetch(`https://pokeapi.co/api/v2/pokemon/${newSearch}`)
+        fetch(
+          `https://pixabay.com/api/?q=${newSearch}&page=1&key=33612656-05dca074429c1b844fadcbf1e&image_type=photo&orientation=horizontal&per_page=12`
+        )
           .then(response => {
             if (response.ok) {
               return response.json();
             }
-            return Promise.reject(new Error(`Cannot find ${newSearch}`));
+            throw new Error(`Cannot find ${newSearch}`);
           })
-          .then(searchResault =>
-            this.setState({ searchResault, status: 'resolved' })
-          )
-          .catch(error => this.setState({ error, status: 'rejected' }));
+          .then(data => {
+            if (data.hits.length > 0) {
+              this.setState({ searchResult: data, status: 'resolved' });
+            } else {
+              throw new Error(`No images found for ${newSearch}`);
+            }
+          })
+          .catch(error => {
+            this.setState({ error, status: 'rejected' });
+            toast.error(error.message, {
+              autoClose: 3000,
+              theme: 'colored',
+            });
+          });
       }, 1000);
     }
   }
 
   render() {
-    const { searchResault, error, status } = this.state;
+    const { status } = this.state;
 
-    if (status === 'idel') {
-      return <div></div>;
+    if (status === 'idle') {
+      return;
     }
     if (status === 'pending') {
-      return <div> Loading ... </div>;
+      return <Loader />;
     }
     if (status === 'rejected') {
-      return <div>{error.message}</div>;
+      return;
     }
     if (status === 'resolved') {
       return (
         <ul className="ImageGallery">
-          console.log();
-          {searchResault && (
-            <li class="gallery-item">
-              <img
-                alt={searchResault.name}
-                src={
-                  searchResault.sprites.other['oficial-artwork'].front_default
-                }
-                width="240"
-              />
-            </li>
+          <ImageGalleryItem searchResult={this.state.searchResult} />
+          {this.state.searchResult.length < 12 ? null : (
+            <Button onClick={this.getData} />
           )}
         </ul>
       );
