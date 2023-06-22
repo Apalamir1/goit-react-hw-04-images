@@ -12,6 +12,8 @@ export default class App extends Component {
   state = {
     images: [],
     largeImage: {},
+    query: '',
+    page: 0,
     isModalOpen: false,
     loading: false,
   };
