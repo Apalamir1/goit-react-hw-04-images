@@ -1,4 +1,4 @@
-import React, { Component } from 'react';
+import { useState, useEffect } from 'react';
 import { Report } from 'notiflix/build/notiflix-report-aio';
 import css from '../components/App.module.css';
 import Searchbar from './SearchBar/Searchbar';
@@ -8,67 +8,56 @@ import Loader from './Loader/Loader';
 import Button from './Button/Button';
 import Modal from './Modal/Modal';
 
-export default class App extends Component {
-  state = {
-    images: [],
-    largeImage: {},
-    query: '',
-    page: 0,
-    isModalOpen: false,
-    loading: false,
-  };
-  componentDidUpdate(prevProps, prevState) {
-    if (this.state.query !== prevState.query) {
-      this.getData();
-    }
-  }
+export default function App() {
+  const [images, setImages] = useState([]);
+  const [largeImage, setLargeImage] = useState({});
+  const [query, setQuery] = useState('');
+  const [page, setPage] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
-  onSubmitBtn = dataQuery => {
-    this.setState({ query: dataQuery, page: 1, images: [] });
-  };
-  getData = () => {
-    const { query, page } = this.state;
+  useEffect(() => {
     if (query === '') {
-      return Report.failure('Plz, enter something...');
+      return;
     }
-    this.setState({ loading: true });
+    setLoading(true);
 
-    setTimeout(() => {
-      getImages(query, page)
-        .then(response => {
-          console.log(response);
-          this.setState(prevState => ({
-            images: [...prevState.images, ...response.data.hits],
-            page: prevState.page + 1,
-          }));
-        })
-        .catch(error => Report.failure('Notiflix Failure', `${error}`, 'Okay'))
-        .finally(this.setState({ loading: false }));
-    }, 500);
-  };
-  toggleModal = () => {
-    this.setState(({ isModalOpen }) => ({ isModalOpen: !isModalOpen }));
-  };
-  onImageClick = data => {
-    this.setState({ largeImage: data });
-    this.toggleModal();
+    getImages(query, page)
+      .then(response => {
+        console.log(response);
+        setImages(prev => [...prev, ...response.data.hits]);
+      })
+      .catch(error => Report.failure('Notiflix Failure', `${error}`, 'Okay'))
+      .finally(setLoading(false));
+  }, [page, query]);
+
+  const onSubmitBtn = dataQuery => {
+    setQuery(dataQuery);
+    setPage(1);
+    setImages([]);
   };
 
-  render() {
-    const { images, loading, isModalOpen, largeImage } = this.state;
-    return (
-      <div className={css.App}>
-        <Searchbar onSubmit={this.onSubmitBtn} />
-        {images.length !== 0 && (
-          <ImageGallery images={images} onClick={this.onImageClick} />
-        )}
-        {images.length < 12 ? null : <Button onClick={this.getData} />}
+  const toggleModal = () => {
+    setIsModalOpen(prev => !prev);
+  };
+  const onImageClick = data => {
+    setLargeImage(data);
+    toggleModal();
+  };
+  const onLoadMoreBtn = () => {
+    setPage(prev => prev + 1);
+  };
 
-        {loading && <Loader />}
-        {isModalOpen && (
-          <Modal image={largeImage} onToggle={this.toggleModal} />
-        )}
-      </div>
-    );
-  }
+  return (
+    <div className={css.App}>
+      <Searchbar onSubmit={onSubmitBtn} />
+      {images.length !== 0 && (
+        <ImageGallery images={images} onClick={onImageClick} />
+      )}
+      {images.length < 12 ? null : <Button onClick={onLoadMoreBtn} />}
+
+      {loading && <Loader />}
+      {isModalOpen && <Modal image={largeImage} onToggle={toggleModal} />}
+    </div>
+  );
 }
